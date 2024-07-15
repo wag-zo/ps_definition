@@ -82,7 +82,7 @@ class set_A():
             
             epoch_now = int(epoch[5:])  # 计算对应epoch
             for e, value in self.persis.items():  # 遍历persis
-                if value > self.thresh:  # 抽出超过阈值部分
+                if value >= self.thresh:  # 抽出超过阈值部分
                     if e not in self.detect:
                         self.detect[e] = [0] * epoch_num
                     self.detect[e][epoch_now] = 1
@@ -114,10 +114,13 @@ class chunk_set_A():
                         self.persis[e] *= math.exp(-self.t)
             
                 for e, value in self.persis.items():  # 遍历persis
-                    if value > self.thresh:  # 抽出超过阈值部分
+                    if value >= self.thresh:  # 抽出超过阈值部分
                         if e not in self.detect:
                             self.detect[e] = [0] * epoch_num
-                        self.detect[e][epoch_now] = 1
+                        last_1_pos = next((i for i, x in enumerate(self.detect[e]) if x == 1), -1)
+                        if epoch_now > last_1_pos:  # 避免不同chunk间相互影响
+                            self.detect[e][epoch_now] = 1
+            print("chunk finished")
         
         a_df = pd.DataFrame.from_dict(self.detect, orient='index')
         a_df.to_csv(f"{save_dir}set_A_t={self.t}_thresh={self.thresh}.csv", header=False)
@@ -157,6 +160,7 @@ class set_B():
 class chunk_set_B():
     def __init__(self, thresh, T = 8) -> None:
         self.persis = {}
+        self.flag = {}
         self.detect = {}
         self.thresh = thresh
         self.T = T
@@ -179,19 +183,27 @@ class chunk_set_B():
                     if e not in self.persis:
                         self.persis[e] = 0
                     self.persis[e] += epoch_value - old_epoch_value
-                
+
                 for e, value in self.persis.items():  # 遍历persis
                     if value >= self.thresh:  # 抽出超过阈值的部分
                         if e not in self.detect:
                             self.detect[e] = [0] * epoch_num
-                        self.detect[e][epoch_now] = 1
-        
+                        last_1_pos = next((i for i, x in enumerate(self.detect[e]) if x == 1), -1)
+                        if epoch_now > last_1_pos:  # 避免不同chunk间相互影响
+                            self.detect[e][epoch_now] = 1
+
+        print("start save")
         b_df = pd.DataFrame.from_dict(self.detect, orient='index')
         b_df.to_csv(f"{save_dir}set_B_T={self.T}_thresh={self.thresh}.csv", header=False)
+        # with open(f"{save_dir}set_B_T={self.T}_thresh={self.thresh}.csv", 'w', newline='', encoding='utf-8') as f:
+        #     writer = csv.writer(f)
+        #     for key, epochs in self.detect.items():  # 逐行写入
+        #         row = [key] + epochs
+        #         writer.writerow(row)
 
 
 if __name__ == "__main__":
-    threshA = 6
+    threshA = 2
     t = 0.1  # 衰减因子
     threshB = 2  # <= T
     T = 8  # 往前看的epoch数量
@@ -213,21 +225,15 @@ if __name__ == "__main__":
     # _set_C = set_C(threshC)
     # _set_C.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
     
-    # time_start = time.clock()
     # _set_A = set_A(threshA, t)
     # _set_A.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
-    # time_end = time.clock()
-    # print("chunk_time = ", (time_end- time_start)/1000000, "s")
 
-    # c_time_start = time.clock()
-    # c_set_A = chunk_set_A(threshA, t)
-    # c_set_A.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
-    # c_time_end = time.clock()
-    # print("chunk_time = ", (c_time_end- c_time_start)/1000000, "s")
+    c_set_A = chunk_set_A(threshA, t)
+    c_set_A.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
     # _set_B = set_B(threshB, T)
     # _set_B.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
-    c_set_B = chunk_set_B(threshB, T)
-    c_set_B.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
+    # c_set_B = chunk_set_B(threshB, T)
+    # c_set_B.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
