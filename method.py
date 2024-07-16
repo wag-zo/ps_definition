@@ -38,6 +38,7 @@ class chunk_set_pre:
                 if e not in self.occur:
                     self.occur[e] = [0] * epoch_num
                 self.occur[e][epoch_now] = 1
+            print("chunk finished")
   
         with open(save_dir + "pre.csv", 'w', newline='', encoding='utf-8') as f:
             writer = csv.writer(f)
@@ -55,7 +56,7 @@ class set_C():
     def enumerate(self, epoch_num, pre_path, save_dir) -> None:
         df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
         df['Sum'] = df.iloc[:, 1:].astype(int).sum(axis=1)  # 对第一列后的元素求和，计算sum
-        filtered_df = df[df['Sum'] > self.thresh]  # 抽出>thresh的行
+        filtered_df = df[df['Sum'] >= self.thresh]  # 抽出>thresh的行
         self.occur = filtered_df[['ID', 'Sum']].set_index('ID').to_dict()['Sum']  # (ID, Sum) 存入字典
         
         c_df = pd.DataFrame.from_dict(self.occur, orient='index', columns=['Value'])
@@ -63,12 +64,36 @@ class set_C():
 
 
 
+class chunk_set_C():
+    def __init__(self, thresh) -> None:
+        self.occur = {}
+        self.thresh = thresh
+    
+    def enumerate(self, epoch_num, pre_path, save_dir) -> None:
+        chunk_size = 20**5  # 可以根据内存调整这个值
+        for chunk in pd.read_csv(pre_path, header=None, chunksize=chunk_size, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)]):
+            chunk['Sum'] = chunk.iloc[:, 1:].astype(int).sum(axis=1)  # 对第一列后的元素求和，计算sum
+            filtered_df = chunk[chunk['Sum'] >= self.thresh]  # 抽出>thresh的行
+            update_sums = filtered_df[['ID', 'Sum']].set_index('ID').to_dict()['Sum']
+            for id, sum in update_sums.items():  # (ID, Sum) 存入字典
+                self.occur[id] = sum
+        
+        c_df = pd.DataFrame.from_dict(self.occur, orient='index', columns=['Value'])
+        c_df.to_csv(f"{save_dir}set_C_thresh={self.thresh}.csv", header=False)
+        # with open(f"{save_dir}set_C_thresh={self.thresh}.csv", 'w', newline='', encoding='utf-8') as f:
+        #     writer = csv.writer(f)
+        #     for key, epochs in self.occur.items():  # 逐行写入
+        #         row = [key] + epochs
+        #         writer.writerow(row)
+
+
+
 class set_A():
-    def __init__(self, thresh, t = 0.1) -> None:
+    def __init__(self, thresh, tau = 0.1) -> None:
         self.persis = {}
         self.detect = {}
         self.thresh = thresh
-        self.t = t
+        self.tau = tau
     
     def enumerate(self, epoch_num, pre_path, save_dir) -> None:
         df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
@@ -76,9 +101,9 @@ class set_A():
             for index, value in enumerate(df[epoch]):
                 e = df.loc[index, 'ID']
                 if value == 1:  # 原值衰减+1
-                    self.persis[e] = self.persis.get(e, 0) * math.exp(-self.t) + 1
+                    self.persis[e] = self.persis.get(e, 0) * math.exp(-self.tau) + 1
                 elif value != 1 and e in self.persis:  # 只衰减
-                    self.persis[e] *= math.exp(-self.t)
+                    self.persis[e] *= math.exp(-self.tau)
             
             epoch_now = int(epoch[5:])  # 计算对应epoch
             for e, value in self.persis.items():  # 遍历persis
@@ -88,19 +113,19 @@ class set_A():
                     self.detect[e][epoch_now] = 1
         
         a_df = pd.DataFrame.from_dict(self.detect, orient='index')
-        a_df.to_csv(f"{save_dir}set_A_t={self.t}_thresh={self.thresh}.csv", header=False)
+        a_df.to_csv(f"{save_dir}set_A_tau={self.tau}_thresh={self.thresh}.csv", header=False)
 
 
 
 class chunk_set_A():
-    def __init__(self, thresh, t = 0.1) -> None:
+    def __init__(self, thresh, tau = 0.1) -> None:
         self.persis = {}
         self.detect = {}
         self.thresh = thresh
-        self.t = t
+        self.tau = tau
     
     def enumerate(self, epoch_num, pre_path, save_dir) -> None:
-        chunk_size = 10**5  # 可以根据内存调整这个值
+        chunk_size = 20**5  # 可以根据内存调整这个值
         for chunk in pd.read_csv(pre_path, header=None, chunksize=chunk_size, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)]):
             for epoch in chunk.columns[1:]:
                 epoch_now = int(epoch[5:])  # 计算对应epoch
@@ -109,9 +134,9 @@ class chunk_set_A():
                 for _, (id_value, epoch_value) in enumerate(zip(ids, epoch_values)):
                     e = id_value
                     if epoch_value == 1:  # 原值衰减+1
-                        self.persis[e] = self.persis.get(e, 0) * math.exp(-self.t) + 1
+                        self.persis[e] = self.persis.get(e, 0) * math.exp(-self.tau) + 1
                     elif epoch_value != 1 and e in self.persis:  # 只衰减
-                        self.persis[e] *= math.exp(-self.t)
+                        self.persis[e] *= math.exp(-self.tau)
             
                 for e, value in self.persis.items():  # 遍历persis
                     if value >= self.thresh:  # 抽出超过阈值部分
@@ -123,7 +148,12 @@ class chunk_set_A():
             print("chunk finished")
         
         a_df = pd.DataFrame.from_dict(self.detect, orient='index')
-        a_df.to_csv(f"{save_dir}set_A_t={self.t}_thresh={self.thresh}.csv", header=False)
+        a_df.to_csv(f"{save_dir}set_A_tau={self.tau}_thresh={self.thresh}.csv", header=False)
+        # with open(f"{save_dir}set_A_t={self.tau}_thresh={self.thresh}.csv", 'w', newline='', encoding='utf-8') as f:
+        #     writer = csv.writer(f)
+        #     for key, epochs in self.detect.items():  # 逐行写入
+        #         row = [key] + epochs
+        #         writer.writerow(row)
 
 
 
@@ -166,7 +196,7 @@ class chunk_set_B():
         self.T = T
     
     def enumerate(self, epoch_num, pre_path, save_dir) -> None:
-        chunk_size = 10**5  # 可以根据内存调整这个值
+        chunk_size = 20**5  # 可以根据内存调整这个值
         for chunk in pd.read_csv(pre_path, header=None, chunksize=chunk_size, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)]):
             # print(chunk.head())
             for epoch in chunk.columns[1:]:
@@ -191,8 +221,8 @@ class chunk_set_B():
                         last_1_pos = next((i for i, x in enumerate(self.detect[e]) if x == 1), -1)
                         if epoch_now > last_1_pos:  # 避免不同chunk间相互影响
                             self.detect[e][epoch_now] = 1
+            print("chunk finished")
 
-        print("start save")
         b_df = pd.DataFrame.from_dict(self.detect, orient='index')
         b_df.to_csv(f"{save_dir}set_B_T={self.T}_thresh={self.thresh}.csv", header=False)
         # with open(f"{save_dir}set_B_T={self.T}_thresh={self.thresh}.csv", 'w', newline='', encoding='utf-8') as f:
@@ -202,19 +232,20 @@ class chunk_set_B():
         #         writer.writerow(row)
 
 
+
 if __name__ == "__main__":
-    threshA = 2
-    t = 0.1  # 衰减因子
-    threshB = 2  # <= T
+    threshA = 8
+    tau = 0.1  # 衰减因子
+    threshB = 3  # <= T
     T = 8  # 往前看的epoch数量
-    threshC = 32
-    epoch_len = 60  # 1个epoch的时间范围
-    start_time = 1681224300.077974000
-    end_time = 1681225200.150813000
+    threshC = 8
+    epoch_len = 300  # 1个epoch的时间范围
+    start_time = 1475304526
+    end_time = 1475325857
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
-    csv_file_path = "./7.12/ca_1.csv"
-    save_dir = "./7.12/results/202304112345/"
+    csv_file_path = "./7.12/data/cc_1.csv"
+    save_dir = "./7.12/results/cc_1/"
 
     # _set_pre = set_pre()
     # _set_pre.enumerate(epoch_num, epoch_len, start_time, csv_file_path, save_dir)
@@ -224,12 +255,15 @@ if __name__ == "__main__":
 
     # _set_C = set_C(threshC)
     # _set_C.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
+
+    c_set_C = chunk_set_C(threshC)
+    c_set_C.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
     
-    # _set_A = set_A(threshA, t)
+    # _set_A = set_A(threshA, tau)
     # _set_A.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
-    c_set_A = chunk_set_A(threshA, t)
-    c_set_A.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
+    # c_set_A = chunk_set_A(threshA, tau)
+    # c_set_A.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
     # _set_B = set_B(threshB, T)
     # _set_B.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
