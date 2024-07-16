@@ -11,14 +11,16 @@ def intersection(epoch_num, c_path, right_path, save_path):
     df['detect'] = df.iloc[:, 1:].astype(int).sum(axis=1)  # 对第一列后的元素求和，计算sum
     df_Right = df.loc[:, ['ID', 'detect']]
     
-    # # 根据id列合并DataFrame并存储
-    # df_ins = pd.merge(df_C, df_Right, on='ID')
-    set_C = set(df_C['ID'])
-    set_Right = set(df_Right['ID'])
-    ins = set_C.intersection(set_Right)
-    filtered_df_C = df_C[df_C['ID'].isin(ins)]
-    filtered_df_Right = df_Right[df_Right['ID'].isin(ins)]
-    df_ins = pd.merge(filtered_df_C, filtered_df_Right, on=df_C.columns[0])
+    # 使用pandas，根据id列合并DataFrame并存储
+    df_ins = pd.merge(df_C, df_Right, on='ID')
+
+    # 使用set.intersection，根据id列合并DataFrame并存储
+    # set_C = set(df_C['ID'])
+    # set_Right = set(df_Right['ID'])
+    # ins = set_C.intersection(set_Right)
+    # filtered_df_C = df_C[df_C['ID'].isin(ins)]
+    # filtered_df_Right = df_Right[df_Right['ID'].isin(ins)]
+    # df_ins = pd.merge(filtered_df_C, filtered_df_Right, on=df_C.columns[0])
 
     df_ins.to_csv(save_path, index=False, header=False)
 
@@ -45,15 +47,19 @@ def copmute_prf(c_path, right_path, ins_path):
     
     return precision, recall, f1_score
 
-def subtract(ac_path, bc_path):
+def subtract(ac_path, bc_path, save_path):
     """计算差集"""
     df_A = pd.read_csv(ac_path, header=None, names=['ID', 'occur', 'detect'])
     df_B = pd.read_csv(bc_path, header=None, names=['ID', 'occur', 'detect'])
     
-    # 找出在A中但不在B中的出现次数并输出
-    df_subtract = df_A.loc[~df_A['ID'].isin(df_B['ID']), 'occur']
-    max_occur = df_subtract.max() if not df_subtract.empty else 0
-    return max_occur
+    # 找出在A中但不在B中的id并输出  
+    df_subtract = df_A.loc[~df_A['ID'].isin(df_B['ID']), ['ID', 'occur']]
+    if df_subtract.empty:
+        return 0, 0
+    max_occur = df_subtract['occur'].max() # 获取occur列的最大值
+    max_occur_ids = df_subtract[df_subtract['occur'] == max_occur]['ID']  # 获取对应的ID
+    max_occur_ids.to_csv(save_path, index=False, header=False)
+    return len(max_occur_ids), max_occur
 
 
 
@@ -87,13 +93,15 @@ if __name__ == "__main__":
         right_path = b_path
         save_path = bc_path
     
-    intersection(epoch_num, c_path, right_path, save_path)
+    # intersection(epoch_num, c_path, right_path, save_path)
 
     # precision, recall, f1_score = copmute_prf(c_path, right_path, save_path)
     # print("precision = {:.4%}, recall = {:.4%}, f1_score = {:.4%}".format(precision, recall, f1_score))
 
-    # max_occur = subtract(ac_path, bc_path)
-    # print("max_occur = {}".format(max_occur))
+    if not os.path.exists(save_dir + "/subtract/"):  # 创建保存subtract的文件夹
+        os.makedirs(save_dir + "/subtract/")
+    max_occur_ids_num, max_occur = subtract(ac_path, bc_path, f"{save_dir}/subtract/A_thresh={threshA}_B_thresh={threshB}_C_thresh={threshC}.csv")
+    print("max_occur = {}, max_occur_ids_num = {}".format(max_occur,max_occur_ids_num))
 
 
 
