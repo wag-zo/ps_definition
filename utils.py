@@ -1,107 +1,59 @@
-import pandas as pd
-import math
-import os
+from hashlib import md5, sha1, sha224, sha256, sha384
 
 
-def intersection(epoch_num, c_path, right_path, save_path):
-    """计算交集"""
-    # 读取CSV文件并生成detect
-    df_C = pd.read_csv(c_path, header=None, names=['ID', 'occur'])
-    df = pd.read_csv(right_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
-    df['detect'] = df.iloc[:, 1:].astype(int).sum(axis=1)  # 对第一列后的元素求和，计算sum
-    df_Right = df.loc[:, ['ID', 'detect']]
+
+def hash2int(type: str, value: str, size: int):
+    """type是哈希函数类型，value是要哈希的字符串，size是哈希表大小"""
+    hash_exp = None  # 构建对象
+    if type == "md5":
+        hash_exp = md5()
+    elif type == "sha1":
+        hash_exp = sha1()
+    elif type == "sha224":
+        hash_exp = sha224()
+    elif type == "sha256":
+        hash_exp = sha256()
+    elif type == "sha384":
+        hash_exp = sha384()
     
-    # 使用pandas，根据id列合并DataFrame并存储
-    df_ins = pd.merge(df_C, df_Right, on='ID')
-
-    # 使用set.intersection，根据id列合并DataFrame并存储
-    # set_C = set(df_C['ID'])
-    # set_Right = set(df_Right['ID'])
-    # ins = set_C.intersection(set_Right)
-    # filtered_df_C = df_C[df_C['ID'].isin(ins)]
-    # filtered_df_Right = df_Right[df_Right['ID'].isin(ins)]
-    # df_ins = pd.merge(filtered_df_C, filtered_df_Right, on=df_C.columns[0])
-
-    df_ins.to_csv(save_path, index=False, header=False)
-
-def copmute_prf(c_path, right_path, ins_path):
-    """计算precision，recall和F1分数"""
-    count_c = 0
-    with open(c_path, 'r', encoding='utf-8') as file:
-        for _ in file:
-            count_c += 1
+    if hash_exp != None:
+        bytes_value = value.encode()  # 编码value
+        hash_exp.update(bytes_value)  # 将编码添加到对象
+        encoded_value = hash_exp.hexdigest()  # 加密，返回十六进制字符串值
+    else:
+        encoded_value = None
     
-    count_r = 0
-    with open(right_path, 'r', encoding='utf-8') as file:
-        for _ in file:
-            count_r += 1
+    result = int(encoded_value, 16) % size  # 取余到哈希表大小
+    return result
 
-    count_ins = 0
-    with open(ins_path, 'r', encoding='utf-8') as file:
-        for _ in file:
-            count_ins += 1
-    
-    precision = count_ins / count_r
-    recall = count_ins / count_c
-    f1_score = 2 * (precision * recall) / (precision + recall)
-    
-    return precision, recall, f1_score
+def hash2str(value: str, size: int):
+    """value是要哈希的字符串，size是目标字符串长度"""
+    hash_value = bin(hash(value))  # 哈希并转换为二进制字符串
+    for i, char in enumerate(hash_value):
+        if char == 'b':
+            binary_str = hash_value[i+1:]  # 去除前缀'0b'
+            break
+    if len(binary_str) < size:
+        binary_str = binary_str.zfill(size)  # 0补齐
+    elif len(binary_str) > size:
+        binary_str = binary_str[:size]  # 截取左侧
+    return binary_str
 
-def subtract(ac_path, bc_path, save_path):
-    """计算差集"""
-    df_A = pd.read_csv(ac_path, header=None, names=['ID', 'occur', 'detect'])
-    df_B = pd.read_csv(bc_path, header=None, names=['ID', 'occur', 'detect'])
-    
-    # 找出在A中但不在B中的id并输出  
-    df_subtract = df_A.loc[~df_A['ID'].isin(df_B['ID']), ['ID', 'occur']]
-    if df_subtract.empty:
-        return 0, 0
-    max_occur = df_subtract['occur'].max() # 获取occur列的最大值
-    max_occur_ids = df_subtract[df_subtract['occur'] == max_occur]['ID']  # 获取对应的ID
-    max_occur_ids.to_csv(save_path, index=False, header=False)
-    return len(max_occur_ids), max_occur
-
+def int_inbits(value: int, bits: int):
+    """value是要判断的整数或小数，bits是要满足的位数"""
+    if value == 0:
+        return 0
+    else:
+        if len(bin(value)[2:]) > bits:
+            mask = (1 << bits) - 1
+            return value & mask
+        else:
+            return value
 
 
 
 if __name__ == "__main__":
-    threshA = 3
-    tau = 0.1  # 衰减因子
-    threshB = 3  # <= T
-    T = 8  # 往前看的epoch数量
-    threshC = 8
-    epoch_len = 60  # 1个epoch的时间范围
-    start_time = 1681224300.077974000
-    end_time = 1681225200.150813000
-    epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
-    # print("epoch_num = ", epoch_num)
-
-    save_dir = "./7.16/202304112345/"
-    if not os.path.exists(save_dir + "/intersection/"):  # 创建保存intersection的文件夹
-        os.makedirs(save_dir + "/intersection/")
-    c_path = f"{save_dir}set_C_thresh={threshC}.csv"
-    a_path = f"{save_dir}set_A_tau={tau}_thresh={threshA}.csv"
-    b_path = f"{save_dir}set_B_T={T}_thresh={threshB}.csv"
-    ac_path = f"{save_dir}/intersection/A_thresh={threshA}_C_thresh={threshC}.csv"
-    bc_path = f"{save_dir}/intersection/B_thresh={threshB}_C_thresh={threshC}.csv"
-
-    ins = "A&C"
-    if ins == "A&C":
-        right_path = a_path
-        save_path = ac_path
-    else:
-        right_path = b_path
-        save_path = bc_path
-    
-    # intersection(epoch_num, c_path, right_path, save_path)
-
-    # precision, recall, f1_score = copmute_prf(c_path, right_path, save_path)
-    # print("precision = {:.4%}, recall = {:.4%}, f1_score = {:.4%}".format(precision, recall, f1_score))
-
-    if not os.path.exists(save_dir + "/subtract/"):  # 创建保存subtract的文件夹
-        os.makedirs(save_dir + "/subtract/")
-    max_occur_ids_num, max_occur = subtract(ac_path, bc_path, f"{save_dir}/subtract/A_thresh={threshA}_B_thresh={threshB}_C_thresh={threshC}.csv")
-    print("max_occur = {}, max_occur_ids_num = {}".format(max_occur,max_occur_ids_num))
-
-
+    # r = hash2int("md5", "1234564656", 128)
+    r = hash2str("serfgwrgs>fwefdfd", 8)
+    print(r)
 

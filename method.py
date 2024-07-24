@@ -234,18 +234,18 @@ class chunk_set_B():
 
 
 if __name__ == "__main__":
-    threshA = 8
+    threshA = 3
     tau = 0.1  # 衰减因子
-    threshB = 3  # <= T
+    threshB = 8  # <= T
     T = 8  # 往前看的epoch数量
-    threshC = 2
-    epoch_len = 60  # 1个epoch的时间范围
-    start_time = 1681224300.077974000
-    end_time = 1681225200.150813000
+    threshC = 40
+    epoch_len = 300  # 1个epoch的时间范围
+    start_time = 1475305136
+    end_time = 1475319422
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
     csv_file_path = "./7.12/data/cc_1.csv"
-    save_dir = "./7.12/results/202304112345/"
+    save_dir = "./7.12/results/ca_1/"
 
     # _set_pre = set_pre()
     # _set_pre.enumerate(epoch_num, epoch_len, start_time, csv_file_path, save_dir)
