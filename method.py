@@ -233,6 +233,36 @@ class chunk_set_B():
 
 
 
+class spread_gt():
+    def __init__(self, tau = 0.1) -> None:
+        self.persis = {}
+        self.spread = {}
+        self.tau = tau
+    
+    def enumerate(self, epoch_num, pre_path, save_dir) -> None:
+        df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
+        for epoch in df.columns[1:]:
+            for index, value in enumerate(df[epoch]):
+                e = df.loc[index, 'ID']
+                if value == 1:  # 原值衰减+1
+                    self.persis[e] = self.persis.get(e, 0) * math.exp(-self.tau) + 1
+                elif value != 1 and e in self.persis:  # 只衰减
+                    self.persis[e] *= math.exp(-self.tau)
+            
+            epoch_now = int(epoch[5:])  # 计算对应epoch
+            print(f"Epoch{epoch_now}: Pm is done")
+            for e, value in self.persis.items():  # 遍历persis
+                src = e.split(">")[0]  # 取出src
+                if src not in self.spread:
+                    self.spread[src] = [0] * epoch_num
+                self.spread[src][epoch_now] += value
+            print(f"Epoch{epoch_now}: Sm is done")
+        
+        s_df = pd.DataFrame.from_dict(self.spread, orient='index')
+        s_df.to_csv(f"{save_dir}spread_groundtruth_tau={self.tau}.csv", header=False)
+
+
+
 if __name__ == "__main__":
     threshA = 3
     tau = 0.1  # 衰减因子
@@ -244,8 +274,8 @@ if __name__ == "__main__":
     end_time = 1475319422
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
-    csv_file_path = "./7.12/data/cc_1.csv"
-    save_dir = "./7.12/results/ca_1/"
+    csv_file_path = "./7.12/data/ca_1.csv"
+    save_dir = "./7.23/ca_1/"
 
     # _set_pre = set_pre()
     # _set_pre.enumerate(epoch_num, epoch_len, start_time, csv_file_path, save_dir)
@@ -256,8 +286,8 @@ if __name__ == "__main__":
     # _set_C = set_C(threshC)
     # _set_C.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
-    c_set_C = chunk_set_C(threshC)
-    c_set_C.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
+    # c_set_C = chunk_set_C(threshC)
+    # c_set_C.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
     
     # _set_A = set_A(threshA, tau)
     # _set_A.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
@@ -270,4 +300,7 @@ if __name__ == "__main__":
 
     # c_set_B = chunk_set_B(threshB, T)
     # c_set_B.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
+
+    spread = spread_gt(tau)
+    spread.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
