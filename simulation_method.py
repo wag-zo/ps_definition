@@ -21,19 +21,16 @@ class P_Sketch():
         for _ in range(self.d):
             self.sketch.append([[0, 0] for _ in range(self.w)])  # 每个bucket两个字段，分别是ts和lpf
 
-    def new_packet(self, ID, ts, start, now_start, epoch_len):
+    def new_packet(self, ID, ts, now_start, start):
         """一个新数据包抵达，判断和更新"""
         flag = False
         Pm = []
         for i in range(self.d):
             pos = hash2int(self.hash_functions[i], ID, self.w)
-            if self.sketch[i][pos][0] < now_start:
+            if self.sketch[i][pos][0] < now_start:  # 判断是否属于当前epoch
                 flag = True  # 当前包是某个element的第一个包
-                if self.sketch[i][pos][0] < start:
-                    empty_epochs = math.ceil((now_start - start) / epoch_len)
-                else:
-                    empty_epochs = math.ceil((now_start - self.sketch[i][pos][0]) / epoch_len)  # 计算经过了多少个epoch
-                new_lpf = self.sketch[i][pos][1] * math.exp(-self.tau * empty_epochs) + 1
+                empty_time = ts - start if self.sketch[i][pos][0] < start else ts - self.sketch[i][pos][0]  # 区分桶第一次更新和其他更新的情况
+                new_lpf = self.sketch[i][pos][1] * math.exp(-self.tau * empty_time) + 1
                 if not check_convert(new_lpf, self.c_bits) or not check_convert(ts, self.ts_bits):  # 位数检查
                     print("Pm or ts in P-Sketch overflow")
                     sys.exit()
@@ -111,7 +108,7 @@ class S_Sketch():
             self.sketch.append([S_Bucket(h=HLL_Counter(self.b, self.alpha, self.mi_bits), x="", l=0) \
                                 for _ in range(self.w)])  # 每个bucket三个字段，分别是h，x和l
 
-    def new_packet(self, ID, Pm, epoch_num, now_epoch):
+    def new_packet(self, ID, Pm):
         """一个新数据包抵达，判断和更新"""
         hm = hash2bin(ID, self.L)  # 将element ID编码成长度为L的01字符串
         h1m = hm[:self.b]  # H1(m)取前b位
@@ -167,8 +164,8 @@ if __name__ == "__main__":
     end_time = 1475319422  # fb: 1475319422 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
-    csv_file_path = "./7.23/test/easy_packets.csv"  # "./7.12/data/ca_1.csv"
-    save_dir = "./7.23/test/"  # "./7.23/ca_1/"
+    csv_file_path = "./7.12/data/ca_1.csv"  # "./7.12/data/202304112345_packets.csv"
+    save_dir = "./7.23/ca_1/"  # "./7.23/2345/"
 
     p_sketch = P_Sketch(d1, w1, tau, c_bits, ts_bits)
     s_sketch = S_Sketch(d2, w2, b, L, alpha, mi_bits, x_bits, l_bits)
@@ -193,10 +190,10 @@ if __name__ == "__main__":
 
             eles_per_epoch[now_epoch].add(ID)
             srcs_per_epoch[now_epoch].add(row[1])
-            flag, Pm = p_sketch.new_packet(ID, ts, start_time, now_start, epoch_len)
+            flag, Pm = p_sketch.new_packet(ID, ts, now_start, start_time)
             packets_psketch_processed[now_epoch] +=1
             if flag:
-                s_sketch.new_packet(ID, Pm, epoch_num, now_epoch)
+                s_sketch.new_packet(ID, Pm)
                 packets_ssketch_processed[now_epoch] +=1
 
     s_sketch.report_per_epoch(epoch_num, now_epoch)  # s_sketch收集结果，对最后一个epoch进行一次report
