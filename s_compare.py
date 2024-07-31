@@ -1,8 +1,8 @@
 import pandas as pd
 import numpy as np
 import math
-import os
-from collections import Counter
+from utils import topk, suffix
+
 
 
 def appear(epoch_num, gt_path, sim_path, save_dir):
@@ -16,9 +16,10 @@ def appear(epoch_num, gt_path, sim_path, save_dir):
     df_ap = pd.DataFrame(df_gt['src'])
     for i in range(epoch_num):
         gt_0 = df_gt[df_gt[f'Epoch{i}'] == 0]
+        gt_non0 = df_gt[df_gt[f'Epoch{i}'] != 0]
         sim_non0 = df_sim[df_sim[f'Epoch{i}'] != 0]
 
-        gt_sim = df_ap['src'].isin(sim_non0['src'])
+        gt_sim = df_ap['src'].isin(pd.merge(gt_non0, sim_non0, on='src')['src'])
         not_gt = df_ap['src'].isin(gt_0['src'])
         # print((gt_sim == True).sum(), (not_gt == True).sum())
         df_ap[f'Epoch{i}'] = np.where(gt_sim, 1,  # 如果在groundtruth中且在simulation中，设为1
@@ -26,8 +27,6 @@ def appear(epoch_num, gt_path, sim_path, save_dir):
                               0))  #   # 如果在groundtruth中但不在simulation中，设为0
     
     df_ap.to_csv(f'{save_dir}appear.csv', index=False, header=False)
-
-
 
 def compute_me(epoch_num, ap_path, gt_path, sim_path):
     """计算每轮epoch，出现在groundtruth-simulation的src个数，出现在groundtruth∩simulation的RMSE和MRE"""
@@ -41,27 +40,51 @@ def compute_me(epoch_num, ap_path, gt_path, sim_path):
         num_sub.append(ap_0.shape[0])
 
         ap_1 = df_ap[df_ap[f'Epoch{i}'] == 1]
-        gt = df_gt.loc[df_gt['src'].isin(ap_1['src']), f'Epoch{i}'].values
-        sim = df_sim.loc[df_sim['src'].isin(ap_1['src']), f'Epoch{i}'].values
+        # gt_all = pd.merge(ap_1[['src']], df_gt, on='src', how='left')['src'].values
+        # sim_all = pd.merge(ap_1[['src']], df_sim, on='src', how='left')['src'].values
+        gt = pd.merge(ap_1[['src']], df_gt, on='src', how='left')[f'Epoch{i}'].values
+        sim = pd.merge(ap_1[['src']], df_sim, on='src', how='left')[f'Epoch{i}'].values
         rmse.append(np.sqrt(((sim - gt) ** 2).mean()))
         mre.append(np.sum(np.abs((sim - gt) / gt)))
     
     return num_sub, rmse, mre
 
+def copmute_prf(epoch_num, k_percent, gt_path, sim_path):
+    """计算precision，recall和F1分数"""
+    topk_gt_path = suffix(gt_path, "_topk")
+    topk(gt_path, k_percent, topk_gt_path)  # 取k_percent%行
+
+    df_gt = pd.read_csv(topk_gt_path, header=None, names=['src'] + [f'Epoch{i}' for i in range(epoch_num)])
+    df_sim = pd.read_csv(sim_path, header=None, names=['src'] + [f'Epoch{i}' for i in range(epoch_num)])
+    df_ins = pd.merge(df_gt, df_sim, on='src')  # 根据id列合并，生成交集intersection
+
+    count_ins, count_gt, count_sim = len(df_ins), len(df_gt), len(df_sim)
+    precision = count_ins / count_sim
+    recall = count_ins / count_gt
+    f1_score = 2 * (precision * recall) / (precision + recall)
+    
+    return precision, recall, f1_score
+
 
 
 if __name__ == "__main__":
-    epoch_len = 300  # 1个epoch的时间范围
-    start_time = 1475305136
-    end_time = 1475319422
+    epoch_len = 300  # 10  # 300  # 1个epoch的时间范围
+    start_time = 1475305136  # 0.001  # 1475305136
+    end_time = 1475319422  # 100  # 1475319422
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
+    k_percent = 0.8  # 截取多少行计算prf
 
-    save_dir = "./7.23/ca_1/"
-    gt_path = "./7.23/ca_1/spread_groundtruth_tau=0.1.csv"
-    sim_path = "./7.23/ca_1/spread_simulation_tau=0.1_w=128_b=4.csv"
+    save_dir = "./7.23/test/"
+    gt_path = save_dir + "spread_groundtruth.csv"
+    sim_path = save_dir + "spread_simulation.csv"
 
-    # appear(epoch_num, gt_path, sim_path, save_dir)
-    num_sub, rmse, mre = compute_me(epoch_num, save_dir + "appear.csv", gt_path, sim_path)
-    print(num_sub, rmse, mre)
+    # appear(epoch_num, gt_path, sim_path, save_dir)  # 判断src是否出现且被检测到，1=出现且被检测到，0=出现且没被检测到，-1=没出现
+    # num_sub, rmse, mre = compute_me(epoch_num, save_dir + "appear.csv", gt_path, sim_path)
+    # print(f"num_sub = {num_sub}\nrmse = ", \
+    #       [float(f"{r:.4f}") for r in rmse], "\nmre = ", \
+    #       [float(f"{m:.4f}") for m in mre])
+    
+    precision, recall, f1_score = copmute_prf(epoch_num, k_percent, gt_path, sim_path)
+    print("precision = {:.4%}, recall = {:.4%}, f1_score = {:.4%}".format(precision, recall, f1_score))
 
 
