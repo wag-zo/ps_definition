@@ -23,7 +23,7 @@ def hash2int(type: str, value: str, size: int):
     bytes_value = value.encode()  # 编码value
     hash_exp.update(bytes_value)  # 将编码添加到对象
     encoded_value = hash_exp.hexdigest()  # 加密，返回十六进制字节流值
-    encoded_value = encoded_value[-math.ceil(len(bin(size)[2:]) / 4):]  # 截取到需要值
+    encoded_value = encoded_value[-math.ceil(len(bin(size)[2:]) / 4):]  # 截取右侧到需要值
     
     result = int(encoded_value, 16) % size  # 转换为哈希表索引
     return result
@@ -34,7 +34,7 @@ def hash2bin(value: str, size: int):
     bytes_value = value.encode()  # 编码value
     hash_exp.update(bytes_value)  # 将编码添加到对象
     encoded_value = hash_exp.hexdigest()  # 加密，返回十六进制字节流值
-    encoded_value = encoded_value[-math.ceil(size / 4):]  # 截取到需要值
+    encoded_value = encoded_value[-math.ceil(size / 4):]  # 截取右侧到需要值
     binary_str = bin(int(encoded_value, 16))[2:]  # 转为二进制
 
     # hash_int = abs(hash(value))
@@ -88,15 +88,15 @@ def align(left_path, right_path, save_path):
 
     df_merged.to_csv(save_path, header=False, index=False)
 
-def topk(path, k_percent, save_path):
+def topk(path, k_percent, save_path, epoch_num):
     """根据所有epoch值的和，找到前k_percent%的行并存储"""
-    df = pd.read_csv(path, header=None, names=['src'] + [f'Epoch{i}' for i in range(48)])
+    df = pd.read_csv(path, header=None, names=['src'] + [f'Epoch{i}' for i in range(epoch_num)])
     df['sum'] = df.iloc[:, 1:].astype(int).sum(axis=1)  # 对第一列后的元素求和，计算sum
     df_sorted = df.sort_values(by='sum', ascending=False)  # 按照sum降序
 
     top_k_df = df_sorted.head(int(len(df_sorted) * k_percent))  # 取前k_percent行
     top_k_df = top_k_df.drop('sum', axis=1)  # 删除sum列
-    top_k_df.to_csv(save_path, index=False)
+    top_k_df.to_csv(save_path, index=False, header=False)
 
 def suffix(path, suf):
     """为文件添加后缀"""
@@ -110,9 +110,9 @@ def suffix(path, suf):
 
 
 if __name__ == "__main__":
-    save_dir = "./7.23/test/"
-    gt_path = "./7.23/test/spread_groundtruth.csv"
-    sim_path = "./7.23/test/spread_simulation.csv"
+    save_dir = "./7.23/test_0.02/"
+    gt_path = save_dir + "spread_groundtruth.csv"
+    sim_path = save_dir + "spread_simulation.csv"
     align(gt_path, sim_path, suffix(sim_path, "_aligned"))  # 模拟结果与ground truth对齐，方便查看
     print("sim_aligned is saved in", suffix(sim_path, "_aligned"))
 

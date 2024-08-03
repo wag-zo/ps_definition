@@ -138,7 +138,7 @@ class S_Sketch():
         print(f"Epoch{now_epoch} is done")
         self.sketch_init()  # 清空sketch
     
-    def save(self, save_dir, tau):
+    def save(self, save_dir):
         """存储所有epoch结束后的结果"""
         df = pd.DataFrame.from_dict(self.spread, orient='index')
         df.to_csv(f"{save_dir}spread_simulation.csv", header=False)
@@ -157,15 +157,15 @@ if __name__ == "__main__":
     b = 4  # 编码字符串切分H1(m)和H2(m)的位置
     L = 32  # 编码字符串长度
     alpha = 0.673  # HLL Counter估计值的补偿因子，根据s=2**b计算
-    tau = 0.1  # fb: 0.1 MAWI: 0.5
+    tau = 0.1  # fb: 0.1 MAWI: 0.05
     
     epoch_len = 300  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
     start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
     end_time = 1475319422  # fb: 1475319422 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
-    csv_file_path = "./7.12/data/ca_1.csv"  # "./7.12/data/202304112345_packets.csv"
-    save_dir = "./7.23/ca_1/"  # "./7.23/2345/"
+    csv_file_path = "./7.23/test_0.02/easy_packets.csv"  # fb: "./7.12/data/ca_1.csv" MAWI: "./7.12/data/202304112345_packets.csv"
+    save_dir = "./7.23/test_0.02/"  # fb: "./7.23/ca_1/" MAWI: "./7.23/2345/"
 
     p_sketch = P_Sketch(d1, w1, tau, c_bits, ts_bits)
     s_sketch = S_Sketch(d2, w2, b, L, alpha, mi_bits, x_bits, l_bits)
@@ -197,7 +197,7 @@ if __name__ == "__main__":
                 packets_ssketch_processed[now_epoch] +=1
 
     s_sketch.report_per_epoch(epoch_num, now_epoch)  # s_sketch收集结果，对最后一个epoch进行一次report
-    s_sketch.save(save_dir, tau)  # 存储结果
+    s_sketch.save(save_dir)  # 存储结果
 
     print("eles_per_epoch = ", [len(e)for e in eles_per_epoch], "\nsrcs_per_epoch = ", [len(s) for s in srcs_per_epoch])
     print("packets_psketch_processed = ", packets_psketch_processed, "\npackets_ssketch_processed = ", packets_ssketch_processed)
