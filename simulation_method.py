@@ -29,7 +29,8 @@ class P_Sketch():
             pos = hash2int(self.hash_functions[i], ID, self.w)
             if self.sketch[i][pos][0] < now_start:  # 判断是否属于当前epoch
                 flag = True  # 当前包是某个element的第一个包
-                empty_time = ts - start if self.sketch[i][pos][0] < start else ts - self.sketch[i][pos][0]  # 区分桶第一次更新和其他更新的情况
+                empty_time = (ts - start) / epoch_len if self.sketch[i][pos][0] < start \
+                    else (ts - self.sketch[i][pos][0]) / epoch_len  # 区分桶第一次更新和其他更新的情况
                 new_lpf = self.sketch[i][pos][1] * math.exp(-self.tau * empty_time) + 1
                 if not check_convert(new_lpf, self.c_bits) or not check_convert(ts, self.ts_bits):  # 位数检查
                     print("Pm or ts in P-Sketch overflow")
@@ -42,7 +43,7 @@ class P_Sketch():
     
     def get_size(self):
         """返回c字段和ts字段所需的最大位数，和整个sketch的大小"""
-        return self.c_bits, self.ts_bits, self.d * self.w * (self.ts_bits + self.c_bits) / 1000000
+        return self.c_bits, self.ts_bits, self.d * self.w * (self.ts_bits + self.c_bits) / 1024 / 1024
 
 
 
@@ -146,16 +147,18 @@ class S_Sketch():
     def get_size(self):
         """返回所有HLL Counter中单个寄存器的最大位数，整个HLL Counter的最大大小，x字段和l字段的最大位数，以及整个sketch的最大大小"""
         _, h_bits = self.sketch[0][0].h.get_size()
-        return self.mi_bits, h_bits, self.x_bits, self.l_bits, self.d * self.w * (h_bits + self.x_bits + self.l_bits) / 1000000
+        return self.mi_bits, h_bits, self.x_bits, self.l_bits, self.d * self.w * (h_bits + self.x_bits + self.l_bits) / 1024 / 1024
 
 
 
 if __name__ == "__main__":
-    d1, d2 = 5, 5  # P-Sketch和S-Sketch的行数
-    w1, w2 = 524288, 4096 # P-Sketch和S-Sketch的列数
+    d1, d2 = 3, 4  # P-Sketch和S-Sketch的行数
+    mem1, mem2 = 1 * 1024, 0.25 * 1024  # P-Sketch和S-Sketch的内存容量 / KB
     c_bits, ts_bits, mi_bits, x_bits, l_bits = 32, 32, 5, 16, 16  # float, float, int, char, int
     b = 4  # 编码字符串切分H1(m)和H2(m)的位置
     L = 32  # 编码字符串长度
+    w1, w2 = math.floor(mem1 * 1024 * 8 / (c_bits + ts_bits) / d1),\
+             math.floor(mem2 * 1024 * 8 / (2 ** b * mi_bits + x_bits + l_bits) / d2) # 根据内存容量确定P-Sketch和S-Sketch的列数
     alpha = 0.673  # HLL Counter估计值的补偿因子，根据s=2**b计算
     tau = 0.1  # fb: 0.1 MAWI: 0.05
     
@@ -164,8 +167,8 @@ if __name__ == "__main__":
     end_time = 1475319422  # fb: 1475319422 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
-    csv_file_path = "./7.23/test_0.02/easy_packets.csv"  # fb: "./7.12/data/ca_1.csv" MAWI: "./7.12/data/202304112345_packets.csv"
-    save_dir = "./7.23/test_0.02/"  # fb: "./7.23/ca_1/" MAWI: "./7.23/2345/"
+    csv_file_path = "./7.12/data/ca_1.csv"  # fb: "./7.12/data/ca_1.csv" MAWI: "./7.12/data/202304112345_packets.csv"
+    save_dir = "./8.22/FB/"  # fb: ./8.22/FB/ MAWI: ./8.22/MAWI/
 
     p_sketch = P_Sketch(d1, w1, tau, c_bits, ts_bits)
     s_sketch = S_Sketch(d2, w2, b, L, alpha, mi_bits, x_bits, l_bits)
@@ -199,6 +202,9 @@ if __name__ == "__main__":
     s_sketch.report_per_epoch(epoch_num, now_epoch)  # s_sketch收集结果，对最后一个epoch进行一次report
     s_sketch.save(save_dir)  # 存储结果
 
+    file = open(f"{save_dir}output.txt", "w")
+    sys.stdout = file  # 输出直接存入txt文件
+
     print("eles_per_epoch = ", [len(e)for e in eles_per_epoch], "\nsrcs_per_epoch = ", [len(s) for s in srcs_per_epoch])
     print("packets_psketch_processed = ", packets_psketch_processed, "\npackets_ssketch_processed = ", packets_ssketch_processed)
     c_bits, ts_bits, p_sketch_mbs = p_sketch.get_size()  # 统计P-Sketch大小
@@ -208,5 +214,6 @@ if __name__ == "__main__":
           f"x_bits = {x_bits}, l_bits = {l_bits}, s_sketch_mbs = {s_sketch_mbs}")
     
     print("All done")
+    file.close()
 
 
