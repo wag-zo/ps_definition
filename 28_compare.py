@@ -18,8 +18,9 @@ def mre(epoch_num, sim_path, gt_path, save_dir):
         errors.fillna(value=0, inplace=True)
         df_new = pd.concat([df_new, errors], axis=1)
     
+    df_new['mre'] = df_new.iloc[:, 1:].mean(axis=1)
     df_new.to_csv(f'{save_dir}mre.csv', index=False)
-    mean_meric = df_new.iloc[:, 1:].mean(axis=1).values  # 取src后所有列
+    mean_meric = df_new['mre'].values  # 取src后所有列
     return mean_meric
 
 def ci(epoch_num, confidence, sim_path, save_dir):
@@ -60,12 +61,12 @@ def corr(epoch_num, sim_path, gt_path, save_dir):
 
 
 if __name__ == "__main__":
-    epoch_len = 300  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
-    start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
-    end_time = 1475319422  # fb: 1475319422 MAWI: 1681225200.150813000
+    epoch_len = 60  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
+    start_time = 1681224300.077974000  # fb: 1475305136 MAWI: 1681224300.077974000
+    end_time = 1681225200.150813000  # fb: 1475319422 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
 
-    save_dir = "./8.28/FB/"  # fb: ./8.22/FB/ MAWI: ./8.22/MAWI/
+    save_dir = "./8.28/"  # fb: ./8.22/FB/ MAWI: ./8.22/MAWI/
     gt_path = save_dir + "spread_groundtruth.csv"  # 定义计算的pm和
     sim_path = save_dir + "spread_simulation.csv"  # ps-sketch计算的pm和
 
