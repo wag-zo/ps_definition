@@ -61,12 +61,12 @@ def corr(epoch_num, sim_path, gt_path, save_dir):
 
 
 if __name__ == "__main__":
-    epoch_len = 60  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
-    start_time = 1681224300.077974000  # fb: 1475305136 MAWI: 1681224300.077974000
-    end_time = 1681225200.150813000  # fb: 1475319422 MAWI: 1681225200.150813000
+    epoch_len = 300  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
+    start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
+    end_time = 1475319422  # fb: 1475319422 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
 
-    save_dir = "./8.28/"  # fb: ./8.22/FB/ MAWI: ./8.22/MAWI/
+    save_dir = "./8.28/FB/"  # fb: ./8.22/FB/ MAWI: ./8.22/MAWI/
     gt_path = save_dir + "spread_groundtruth.csv"  # 定义计算的pm和
     sim_path = save_dir + "spread_simulation.csv"  # ps-sketch计算的pm和
 
@@ -74,5 +74,5 @@ if __name__ == "__main__":
     confidences = ci(epoch_num, 0.9, sim_path, save_dir)
     corrs = corr(epoch_num, sim_path, gt_path, save_dir)
 
-    print(f"mre/90% confidence = {(mres / confidences).mean()}, corr = {corrs}")
+    print(f"mre = {mres.mean()}, 90% confidence = {confidences.mean()}, corr = {corrs}")
 
