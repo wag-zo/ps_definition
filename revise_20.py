@@ -16,24 +16,20 @@ class appearance():
         self.b_flag = b_flag
     
     def enumerate(self, epoch_num, pre_path, save_dir) -> None:
+        df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
         s_rows = []
-        for epoch_now in range(epoch_num):
-            file = open(pre_path)
-            reader = csv.reader(file)
-            f_e = {}
-            for row in reader:
-                e, value = row[0], int(row[epoch_now + 1])  # 计算element_id和对应epoch
+        for epoch in df.columns[1:]:
+            f_e = defaultdict(list)
+            for index, value in enumerate(df[epoch]):
+                e = df.loc[index, 'ID']
                 f = e.split(">")[0]
-                if self.b_flag and hash2int("md5", f, self.buckets) != self.b_id:  # 跳过不属于当前桶的flow
-                    continue
+                # if self.b_flag and hash2int("md5", f, self.buckets) != self.b_id:  # 跳过不属于当前桶的flow
+                #     continue
                 self.e_time[e] += value  # 更新element出现次数，初始默认为0
+                epoch_now = int(epoch[5:])  # 计算对应epoch
                 if f not in self.lifetime:
                     self.lifetime[f] = epoch_now  # 只记录首次出现的epoch
-                if f not in f_e:
-                    f_e[f] = [e]
-                else:
-                    f_e[f].append(e)
-            file.close()
+                f_e[f].append(e)
 
             for f, e_list in f_e.items():
                 spread = len(e_list)
@@ -43,10 +39,6 @@ class appearance():
 
         s_df = pd.DataFrame(s_rows, columns=['Epoch', 'flow_id', 'appearance', 'spread'])
         save_path = f"{save_dir}appe_spread_{self.b_id}_{self.buckets}.csv" if self.b_flag else f"{save_dir}appe_spread.csv"
-        # with open(save_path, 'w', newline='') as file:  # 用csv写入
-        #     writer = csv.writer(file)
-        #     for row in s_rows:
-        #         writer.writerow(row)
         s_df.to_csv(save_path, header=False, index=False)
 
 
