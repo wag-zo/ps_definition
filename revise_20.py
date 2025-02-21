@@ -43,7 +43,7 @@ class appearance():
             print(f"Epoch{epoch_now}: appearance is done")
 
         s_df = pd.DataFrame(s_rows, columns=['Epoch', 'flow_id', 'appearance', 'spread'])
-        save_path = f"{save_dir}appe_spread_{self.b_id}.csv" if self.b_flag else f"{save_dir}appe_spread.csv"
+        save_path = f"{save_dir}appe_spread_{self.b_id}_{self.buckets}.csv" if self.b_flag else f"{save_dir}appe_spread.csv"
         s_df.to_csv(save_path, header=False, index=False)
 
 
