@@ -16,29 +16,30 @@ class appearance():
         self.b_flag = b_flag
     
     def enumerate(self, epoch_num, pre_path, save_dir) -> None:
-        with open(pre_path) as file:
+        s_rows = []
+        for epoch_now in range(epoch_num):
+            file = open(pre_path)
             reader = csv.reader(file)
-            s_rows = []
-            for epoch_now in range(epoch_num):
-                f_e = {}
-                for row in reader:
-                    e, value = row[0], int(row[epoch_now + 1])  # 计算element_id和对应epoch
-                    f = e.split(">")[0]
-                    if self.b_flag and hash2int("md5", f, self.buckets) != self.b_id:  # 跳过不属于当前桶的flow
-                        continue
-                    self.e_time[e] += value  # 更新element出现次数，初始默认为0
-                    if f not in self.lifetime:
-                        self.lifetime[f] = epoch_now  # 只记录首次出现的epoch
-                    if f not in f_e:
-                        f_e[f] = [e]
-                    else:
-                        f_e[f].append(e)
+            f_e = {}
+            for row in reader:
+                e, value = row[0], int(row[epoch_now + 1])  # 计算element_id和对应epoch
+                f = e.split(">")[0]
+                if self.b_flag and hash2int("md5", f, self.buckets) != self.b_id:  # 跳过不属于当前桶的flow
+                    continue
+                self.e_time[e] += value  # 更新element出现次数，初始默认为0
+                if f not in self.lifetime:
+                    self.lifetime[f] = epoch_now  # 只记录首次出现的epoch
+                if f not in f_e:
+                    f_e[f] = [e]
+                else:
+                    f_e[f].append(e)
+            file.close()
 
-                for f, e_list in f_e.items():
-                    spread = len(e_list)
-                    appearance = sum([self.e_time[e] for e in e_list]) / (epoch_now - self.lifetime[f] + 1) / spread
-                    s_rows.append([epoch_now, f, appearance, spread])  # 更新到列表
-                print(f"Epoch{epoch_now}: appearance is done")
+            for f, e_list in f_e.items():
+                spread = len(e_list)
+                appearance = sum([self.e_time[e] for e in e_list]) / (epoch_now - self.lifetime[f] + 1) / spread
+                s_rows.append([epoch_now, f, appearance, spread])  # 更新到列表
+            print(f"Epoch{epoch_now}: appearance is done")
 
         s_df = pd.DataFrame(s_rows, columns=['Epoch', 'flow_id', 'appearance', 'spread'])
         save_path = f"{save_dir}appe_spread_{self.b_id}_{self.buckets}.csv" if self.b_flag else f"{save_dir}appe_spread.csv"
