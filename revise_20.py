@@ -49,13 +49,12 @@ class appearance():
 
 
 if __name__ == "__main__":
-    tau = 0.05  # fb: 0.1 MAWI: 0.05
     buckets = 6  # 分桶数
-    b_id = 1  # 当前计算哪个桶
+    b_id = 0  # 当前计算哪个桶
     
-    epoch_len = 60  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
-    start_time = 1681224300.077974000  # fb: 1475305136 MAWI: 1681224300.077974000
-    end_time = 1681225200.150813000  # fb: 1475319422 MAWI: 1681225200.150813000
+    epoch_len = 60  # fb: 60 MAWI: 60  # 1个epoch的时间范围/second
+    start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
+    end_time = 1475392025  # fb: 1475392025 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
     csv_file_path = "./7.12/data/202304112345_packets.csv"  # fb: "./7.12/data/ca_1.csv" MAWI: "./7.12/data/202304112345_packets.csv"
