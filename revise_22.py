@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     epoch_len = 60  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
     start_time = 1681224300.077974000  # fb: 1475305136 MAWI: 1681224300.077974000
-    end_time = 1681225200.150813000  # fb: 1475319422 MAWI: 1681225200.150813000
+    end_time = 1681225200.150813000  # fb: 1475392025 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
     csv_file_path = "./7.12/data/202304112345_packets.csv"  # fb: "./7.12/data/ca_1.csv" MAWI: "./7.12/data/202304112345_packets.csv"
