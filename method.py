@@ -242,8 +242,7 @@ class spread_gt():
     def enumerate(self, epoch_num, pre_path, save_dir) -> None:
         df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
         for epoch in df.columns[1:]:
-            e_flag = {}
-            es = set()
+            e_flag = {}  # 判断当前轮出现了哪些element
             for index, value in enumerate(df[epoch]):
                 e = df.loc[index, 'ID']
                 e_flag[e] = True if value == 1 else False  # 出现过则为True，没出现过则为False
@@ -270,18 +269,18 @@ class spread_gt():
 
 if __name__ == "__main__":
     threshA = 3
-    tau = 0.1  # fb: 0.1 MAWI: 0.5
+    tau = 0.05  # fb: 0.1 MAWI: 0.05
     threshB = 8  # <= T
     T = 8  # 往前看的epoch数量
     threshC = 40
     
-    epoch_len = 300  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
+    epoch_len = 60  # fb: 300 MAWI: 60  # 1个epoch的时间范围/second
     start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
-    end_time = 1475319422  # fb: 1475319422 MAWI: 1681225200.150813000
+    end_time = 1475392025  # fb: 1475319422 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
     print("epoch_num = ", epoch_num)
-    csv_file_path = "./7.12/data/ca_1.csv"  # "./7.12/data/ca_1.csv"
-    save_dir = "./7.23/ca_1/"  # "./7.23/ca_1/"
+    csv_file_path = "./7.12/data/202304112345_packets.csv"  # fb: "./7.12/data/ca_1.csv" MAWI: "./7.12/data/202304112345_packets.csv"
+    save_dir = "./2.22/FB/"  # fb: "./7.23/ca_1/" MAWI: "./7.23/2345/"
 
     # _set_pre = set_pre()
     # _set_pre.enumerate(epoch_num, epoch_len, start_time, csv_file_path, save_dir)
@@ -308,5 +307,5 @@ if __name__ == "__main__":
     # c_set_B.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
 
     spread = spread_gt(tau)
-    spread.enumerate(epoch_num, save_dir + "pre.csv", save_dir)
+    spread.enumerate(epoch_num, "./2.22/FB/pre_1_40.csv", save_dir)
 
