@@ -120,7 +120,7 @@ if __name__ == "__main__":
     t = 16  # kt向前查找的周期数
     k = 8  # kt判断persistent元素的阈值
     thresh_kt = 10  # kt判断persistent spreader的阈值
-    thresh_ps = 200  # ps判断persistent spreader的阈值
+    thresh_ps = 50  # ps判断persistent spreader的阈值
 
     epoch_len = 60  # fb: 60 MAWI: 60  # 1个epoch的时间范围/second
     start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
