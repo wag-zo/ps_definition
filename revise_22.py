@@ -36,17 +36,23 @@ def kt_persis(epoch_num, pre_path, save_dir, t, batch_size = 100000):
                                     columns=['ID'] + [f'Epoch{i}' for i in range(num_cols)])  # 创建当前批次的 DataFrame
             batch_df.to_csv(f, header=False, index=False, mode='a')
 
-def kt_all(epoch_num, persis_path, save_dir, k):
+def kt_all(epoch_num, persis_path, pre_path, save_dir, k):
     """计算每轮每个flow对应的spread, kt-persistent spread, 以及平均kt-persistence"""
-    df = pd.read_csv(persis_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
+    dtypes = {'ID': str}
+    for i in range(epoch_num):
+        dtypes[f'Epoch{i}'] = 'int8'  # 缩小数据空间
+    df_presis = pd.read_csv(persis_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)], dtype=dtypes)
+    df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)], dtype=dtypes)
     s_rows = []
-    for epoch in df.columns[1:]:
+    for epoch in df_presis.columns[1:]:
         f_e = defaultdict(list)  # 本轮所有出现过的element_id
         f_kte = Counter()  # 本轮满足kt的element个数
         epoch_now = int(epoch[5:])  # 计算对应epoch
-        for index, value in enumerate(df[epoch]):
-            e = df.loc[index, 'ID']
+        for index, value in enumerate(df_presis[epoch]):
+            e = df_presis.loc[index, 'ID']
             f = e.split(">")[0]
+            if df.loc[index, epoch] == 0:  # 如果在预处理中不为0，说明element在当前epoch出现
+                continue
             f_e[f].append(value)
             if value >= k:
                 f_kte[f] += 1
@@ -126,20 +132,20 @@ if __name__ == "__main__":
     start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
     end_time = 1475392025  # fb: 1475392025 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
-    save_dir = "./2.22/FB/"  # fb: "./7.23/ca_1/" MAWI: "./7.23/2345/"
+    save_dir = "./2.22/FB/pre_3_40/"  # fb: "./7.23/ca_1/" MAWI: "./7.23/2345/"
     gt_path = save_dir + "spread_groundtruth.csv"  # 定义计算的pm和
     sim_path = save_dir + "spread_simulation.csv"  # ps-sketch计算的pm和
 
-    if not os.path.exists(save_dir + f"t={t}_k={k}/"):  # 创建保存当前thresh_kt的文件夹
-        os.makedirs(save_dir + f"t={t}_k={k}/")
-    kt_persis(epoch_num, "./2.22/FB/pre_1_40.csv", f"{save_dir}t={t}_k={k}/", t)  # 所有元素的kt-persistence
-    kt_all(epoch_num, f"{save_dir}t={t}_k={k}/kt_persis.csv", f"{save_dir}t={t}_k={k}/", k)  # 所有元素的kt-persistent spread
+    # if not os.path.exists(save_dir + f"t={t}_k={k}/"):  # 创建保存当前thresh_kt的文件夹
+    #     os.makedirs(save_dir + f"t={t}_k={k}/")
+    # kt_persis(epoch_num, f"{save_dir}pre_3_40.csv", f"{save_dir}t={t}_k={k}/", t)  # 所有元素的kt-persistence
+    kt_all(epoch_num, f"{save_dir}t={t}_k={k}/kt_persis.csv", f"{save_dir}pre_3_40.csv", f"{save_dir}t={t}_k={k}/", k)  # 所有元素的kt-persistent spread
     kt_thresh(f"{save_dir}t={t}_k={k}/kt_all.csv", f"{save_dir}t={t}_k={k}/", thresh_kt)  # 截取>=thresh的kt-persistent spread
 
-    if not os.path.exists(save_dir + f"tau={thresh_ps}/"):  # 创建保存当前thresh_ps的文件夹
-        os.makedirs(save_dir + f"tau={thresh_ps}/")
-    merge_ps_all(epoch_num, gt_path, sim_path, f"{save_dir}tau={thresh_ps}/")  # 将ps-sketch中的模拟和真实值整合在一起, *修改thresh不需要重跑
-    ps_thresh(f"{save_dir}tau={thresh_ps}/ps_all.csv", f"{save_dir}tau={thresh_ps}/", thresh_ps)  # 截取>thresh的ps-persistent spread
+    # if not os.path.exists(save_dir + f"tau={thresh_ps}/"):  # 创建保存当前thresh_ps的文件夹
+    #     os.makedirs(save_dir + f"tau={thresh_ps}/")
+    # merge_ps_all(epoch_num, gt_path, sim_path, f"{save_dir}tau={thresh_ps}/")  # 将ps-sketch中的模拟和真实值整合在一起, *修改thresh不需要重跑
+    # ps_thresh(f"{save_dir}tau={thresh_ps}/ps_all.csv", f"{save_dir}tau={thresh_ps}/", thresh_ps)  # 截取>thresh的ps-persistent spread
 
     if not os.path.exists(save_dir + f"result/"):  # 创建保存结果的文件夹
         os.makedirs(save_dir + f"result/")
