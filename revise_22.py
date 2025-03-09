@@ -21,7 +21,10 @@ def num_in_t(occur, t, batch_size = 100000):
  
 def kt_persis(epoch_num, pre_path, save_dir, t, batch_size = 100000):
     """计算每轮每个element对应的kt-persistence, 不足t的情况直接累加, 形状与pre相同"""
-    df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)])
+    dtypes = {'ID': str}
+    for i in range(epoch_num):
+        dtypes[f'Epoch{i}'] = 'int8'  # 缩小数据空间
+    df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)], dtype=dtypes)
     ids = df['ID'].values
     data = df.drop(columns=['ID']).values
     
@@ -120,6 +123,16 @@ def merge_ps_kt(kt_all_path, kt_thresh_path, ps_all_path, ps_thresh_path, save_d
     print("num in both = ", df_ktbase.shape[0] - only_in_ktbase.shape[0],\
           ", only in ps = ", only_in_psbase.shape[0], ", only in kt = ", only_in_ktbase.shape[0])
 
+def example(epoch_num, pre_path, flow_ids, save_dir):
+    """根据flow_id列表挑出所有历史element的出现情况"""
+    dtypes = {'ID': str}
+    for i in range(epoch_num):
+        dtypes[f'Epoch{i}'] = 'int8'  # 缩小数据空间
+    df = pd.read_csv(pre_path, header=None, names=['ID'] + [f'Epoch{i}' for i in range(epoch_num)], dtype=dtypes)
+    for flow_id in flow_ids:
+        ex_df = df[df['ID'].str.contains(flow_id, case=False)]
+        ex_df.to_csv(f"{save_dir}example.csv", header=False, index=False, mode='a')  # 追加写入当前流的信息
+
 
 
 if __name__ == "__main__":
@@ -132,15 +145,15 @@ if __name__ == "__main__":
     start_time = 1475305136  # fb: 1475305136 MAWI: 1681224300.077974000
     end_time = 1475392025  # fb: 1475392025 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
-    save_dir = "./2.22/FB/pre_3_40/"  # fb: "./7.23/ca_1/" MAWI: "./7.23/2345/"
+    save_dir = "./2.22/FB/pre_1_40/"  # fb: "./7.23/ca_1/" MAWI: "./7.23/2345/"
     gt_path = save_dir + "spread_groundtruth.csv"  # 定义计算的pm和
     sim_path = save_dir + "spread_simulation.csv"  # ps-sketch计算的pm和
 
     # if not os.path.exists(save_dir + f"t={t}_k={k}/"):  # 创建保存当前thresh_kt的文件夹
     #     os.makedirs(save_dir + f"t={t}_k={k}/")
     # kt_persis(epoch_num, f"{save_dir}pre_3_40.csv", f"{save_dir}t={t}_k={k}/", t)  # 所有元素的kt-persistence
-    kt_all(epoch_num, f"{save_dir}t={t}_k={k}/kt_persis.csv", f"{save_dir}pre_3_40.csv", f"{save_dir}t={t}_k={k}/", k)  # 所有元素的kt-persistent spread
-    kt_thresh(f"{save_dir}t={t}_k={k}/kt_all.csv", f"{save_dir}t={t}_k={k}/", thresh_kt)  # 截取>=thresh的kt-persistent spread
+    # kt_all(epoch_num, f"{save_dir}t={t}_k={k}/kt_persis.csv", f"{save_dir}pre_1_40.csv", f"{save_dir}t={t}_k={k}/", k)  # 所有元素的kt-persistent spread
+    # kt_thresh(f"{save_dir}t={t}_k={k}/kt_all.csv", f"{save_dir}t={t}_k={k}/", thresh_kt)  # 截取>=thresh的kt-persistent spread
 
     # if not os.path.exists(save_dir + f"tau={thresh_ps}/"):  # 创建保存当前thresh_ps的文件夹
     #     os.makedirs(save_dir + f"tau={thresh_ps}/")
@@ -149,10 +162,15 @@ if __name__ == "__main__":
 
     if not os.path.exists(save_dir + f"result/"):  # 创建保存结果的文件夹
         os.makedirs(save_dir + f"result/")
-    file = open(f"{save_dir}result/output.txt", "w")
-    sys.stdout = file  # 输出直接存入txt文件
-    print(f"t = {t}, k = {k}, thresh_kt = {thresh_kt}, thresh_ps = {thresh_ps}")
-    merge_ps_kt(f"{save_dir}t={t}_k={k}/kt_all.csv", f"{save_dir}t={t}_k={k}/kt_thresh.csv",\
-                f"{save_dir}tau={thresh_ps}/ps_all.csv", f"{save_dir}tau={thresh_ps}/ps_thresh.csv",\
-                    f"{save_dir}result/")  # 求ps和kt的交集差集
-    file.close()
+    # file = open(f"{save_dir}result/output.txt", "w")
+    # sys.stdout = file  # 输出直接存入txt文件
+    # print(f"t = {t}, k = {k}, thresh_kt = {thresh_kt}, thresh_ps = {thresh_ps}")
+    # merge_ps_kt(f"{save_dir}t={t}_k={k}/kt_all.csv", f"{save_dir}t={t}_k={k}/kt_thresh.csv",\
+    #             f"{save_dir}tau={thresh_ps}/ps_all.csv", f"{save_dir}tau={thresh_ps}/ps_thresh.csv",\
+    #                 f"{save_dir}result/")  # 求ps和kt的交集差集
+    # file.close()
+
+    example(epoch_num, f"{save_dir}pre_1_40.csv", ["f4f5db99cd0b4519", "90cbe97ccb5ff53e",\
+            "ba6b20a796ad4eef", "f8edbce27f25603c", "73ca04cc77be6c31"], f"{save_dir}result/")  # 手动选择flow_id并提取对应element情况
+    # only in kt:["d30fbe669f2acfa9", "277cfd3e55f6a5da", "86c43594c9deb479", "baf52ae13550b284", "356598f6478b0bb7"], 出现次数为[976, 827, 138, 105, 55]
+    # only in ps:["f4f5db99cd0b4519", "90cbe97ccb5ff53e", "ba6b20a796ad4eef", "f8edbce27f25603c", "73ca04cc77be6c31"], 出现次数[1156, 1096, 1058, 855, 728]
