@@ -63,7 +63,7 @@ def persis_comp(epoch_num, gt_persis_path, sim_persis_path, save_path):
 
     count_TP, count_gt, count_sim = df_TP.shape[0], df_gt.shape[0], df_sim.shape[0]
     count_FP, count_FN = count_sim - count_TP, count_gt - count_TP
-    precision, recall = count_TP / (count_TP + count_FP), count_TP / (count_TP + count_FN)
+    precision, recall = count_TP / (count_TP + count_FP), count_TP / (count_TP + count_FN) if count_TP != 0 and count_FP != 0 and count_FN != 0 else 0
     return count_TP, count_FP, count_FN, precision, recall
 
 
@@ -74,15 +74,15 @@ if __name__ == "__main__":
     ks = [6, 8, 10, 12] if data_type == "fb" else [3, 4, 5, 6]  # fb: [6, 8, 10, 12] MAWI: [3, 4, 5, 6]  # kt判断persistent元素的阈值
     thresh_ps = 50 if data_type == "fb" else 200  # fb: 50 MAWI: 200  # ps判断persistent spreader的阈值
     thresh_p_gt = 400  # 用作ground truth, 判断element是否是persistent的
-    thresh_p_ps = [6, 8]  # 以ps-sketch定义判断element是否是persistent的
-    thresh_p_kt = [6, 8]  # 以kt-persistence定义判断element是否是persistent的
+    thresh_p_ps = [2, 4, 6, 8]  # 以ps-sketch定义判断element是否是persistent的
+    thresh_p_kt = [6, 8, 10, 12]  # 以kt-persistence定义判断element是否是persistent的
 
     epoch_len = 60  # fb: 60 MAWI: 60  # 1个epoch的时间范围/second
     start_time = 1475305136 if data_type == "fb" else 1681224300.077974000  # fb: 1475305136 MAWI: 1681224300.077974000
     end_time = 1475392025 if data_type == "fb" else 1681225200.150813000  # fb: 1475392025 MAWI: 1681225200.150813000
     epoch_num = math.ceil((end_time - start_time) / epoch_len)  # epoch的数量
-    save_dir = "./3.5/FB/"  if data_type == "fb" else "./3.5/MAWI/"
-    pre_path = save_dir + "pre_1_40.csv"  # 预处理文件
+    save_dir = "./3.5/FB/" if data_type == "fb" else "./3.5/MAWI/"
+    pre_path = save_dir + "pre.csv"  # 预处理文件
     gt_path = save_dir + "spread_groundtruth.csv"  # 定义计算的pm和
     sim_path = save_dir + "spread_simulation.csv"  # ps-sketch计算的pm和
 
@@ -99,23 +99,24 @@ if __name__ == "__main__":
     # if not os.path.exists(save_dir + f"result/"):  # 创建保存结果的文件夹
     #     os.makedirs(save_dir + f"result/")
     # merge_ps_kt(f"{save_dir}ps_thresh.csv", save_dir, ks)  # 求ps和kt的交集差集
-    find_diff_flow(sim_path, pre_path, save_dir, "8b9fdc4916c40130", epoch_num, ks)  # 挑出一个flowexample
+    # find_diff_flow(sim_path, pre_path, save_dir, "162.115.137.235", epoch_num, ks)  # 挑出一个flowexample  # fb:8b9fdc4916c40130 MAWI:162.115.137.235
 
     # ---------------------------------experiment 2---------------------------------
-    # if not os.path.exists(save_dir + f"set/"):  # 创建保存集合结果的文件夹
-    #     os.makedirs(save_dir + f"set/")
-    # set_gt, set_ps, set_kt = chunk_set_C(thresh_p_gt), chunk_set_A(0, tau), chunk_set_B(0, t)  # set_C代表ground truth, set_A代表ps-sketch, set_B代表kt-persistence
+    if not os.path.exists(save_dir + f"set/"):  # 创建保存集合结果的文件夹
+        os.makedirs(save_dir + f"set/")
+    set_gt, set_ps, set_kt = chunk_set_C(thresh_p_gt), chunk_set_A(0, tau), chunk_set_B(0, t)  # set_C代表ground truth, set_A代表ps-sketch, set_B代表kt-persistence
     # set_gt.enumerate(epoch_num, pre_path, f"{save_dir}set/")  # groundtruth
-    # file = open(f"{save_dir}result/set_output.txt", "w")  # 输出保存在result文件夹里
-    # sys.stdout = file  # 输出直接存入txt文件
-    # for thresh in thresh_p_ps:
-    #     set_ps.thresh = thresh
-    #     set_ps.enumerate(epoch_num, pre_path, f"{save_dir}set/")  # ps-sketch
-    #     count_TP, count_FP, count_FN, precision, recall = persis_comp(epoch_num, f"{save_dir}set/set_C_thresh={thresh_p_gt}.csv", f"{save_dir}set/set_A_tau={tau}_thresh={thresh}.csv", f"{save_dir}set/C_{thresh_p_gt}_A_{thresh}.csv")
-    #     print(f'threshold = {thresh}, count_TP = {count_TP}, count_FP = {count_FP}, count_FN = {count_FN}, precision = {precision}, recall = {recall}')
+    file = open(f"{save_dir}result/set_output.txt", "w")  # 输出保存在result文件夹里
+    sys.stdout = file  # 输出直接存入txt文件
+    for thresh in thresh_p_ps:
+        set_ps.__init__(thresh, tau)
+        print(set_ps.thresh)
+        set_ps.enumerate(epoch_num, pre_path, f"{save_dir}set/")  # ps-sketch
+        count_TP, count_FP, count_FN, precision, recall = persis_comp(epoch_num, f"{save_dir}set/set_C_thresh={thresh_p_gt}.csv", f"{save_dir}set/set_A_tau={tau}_thresh={thresh}.csv", f"{save_dir}set/C_{thresh_p_gt}_A_{thresh}.csv")
+        print(f'threshold = {thresh}, count_TP = {count_TP}, count_FP = {count_FP}, count_FN = {count_FN}, precision = {precision}, recall = {recall}')
     # for thresh in thresh_p_kt:
-    #     set_kt.thresh = thresh
-    #     set_kt.enumerate(epoch_num, pre_path, f"{save_dir}set/")  # kt-persis
+    #     # set_kt.__init__(thresh, t)
+    #     # set_kt.enumerate(epoch_num, pre_path, f"{save_dir}set/")  # kt-persis
     #     count_TP, count_FP, count_FN, precision, recall = persis_comp(epoch_num, f"{save_dir}set/set_C_thresh={thresh_p_gt}.csv", f"{save_dir}set/set_B_T={t}_thresh={thresh}.csv", f"{save_dir}set/C_{thresh_p_gt}_B_{thresh}.csv")
     #     print(f'k = {thresh}, count_TP = {count_TP}, count_FP = {count_FP}, count_FN = {count_FN}, precision = {precision}, recall = {recall}')
-    # file.close()
+    file.close()

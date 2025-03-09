@@ -141,7 +141,7 @@ class chunk_set_A():
                 for e, value in self.persis.items():  # 遍历persis
                     if value >= self.thresh:  # 抽出超过阈值部分
                         if e not in self.detect:
-                            self.detect[e] = [0] * epoch_num
+                            self.detect[e] =np.zeros(epoch_num, dtype=np.int16)
                         last_1_pos = next((i for i, x in enumerate(self.detect[e]) if x == 1), -1)
                         if epoch_now > last_1_pos:  # 避免不同chunk间相互影响
                             self.detect[e][epoch_now] = 1
@@ -217,7 +217,7 @@ class chunk_set_B():
                 for e, value in self.persis.items():  # 遍历persis
                     if value >= self.thresh:  # 抽出超过阈值的部分
                         if e not in self.detect:
-                            self.detect[e] = [0] * epoch_num
+                            self.detect[e] = np.zeros(epoch_num, dtype=np.int16)
                         last_1_pos = next((i for i, x in enumerate(self.detect[e]) if x == 1), -1)
                         if epoch_now > last_1_pos:  # 避免不同chunk间相互影响
                             self.detect[e][epoch_now] = 1
