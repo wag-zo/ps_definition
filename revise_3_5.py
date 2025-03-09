@@ -110,7 +110,6 @@ if __name__ == "__main__":
     sys.stdout = file  # 输出直接存入txt文件
     for thresh in thresh_p_ps:
         set_ps.__init__(thresh, tau)
-        print(set_ps.thresh)
         set_ps.enumerate(epoch_num, pre_path, f"{save_dir}set/")  # ps-sketch
         count_TP, count_FP, count_FN, precision, recall = persis_comp(epoch_num, f"{save_dir}set/set_C_thresh={thresh_p_gt}.csv", f"{save_dir}set/set_A_tau={tau}_thresh={thresh}.csv", f"{save_dir}set/C_{thresh_p_gt}_A_{thresh}.csv")
         print(f'threshold = {thresh}, count_TP = {count_TP}, count_FP = {count_FP}, count_FN = {count_FN}, precision = {precision}, recall = {recall}')
